@@ -1,0 +1,11 @@
+' double exponential pulse
+
+clock = 1e8
+size = 10240
+
+k1 = 50e-8
+k2 = 1000e-8
+
+"tmp" = exp(-time / k2) - exp(-time / k1)
+"d_exp.wfm" = norm("tmp")
+delete("tmp")

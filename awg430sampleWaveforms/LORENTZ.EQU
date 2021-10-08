@@ -1,0 +1,9 @@
+' lorentz pulse
+
+size = 1024
+clock = 1e8
+
+k0 = 20e-8    ' pulse width
+k1 = 512e-8   ' peak location
+
+"lorentz.wfm" = 1 / (1 + (2 * (time - k1) / k0) ^ 2)

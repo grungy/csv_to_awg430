@@ -1,0 +1,11 @@
+' frequency modulation
+
+clock = 819.2e5
+size = 32768
+
+k0 = 25e2     'signal frequency
+k1 = 100e5    'carrier frequency
+b= 60.12e2    'frequency deviation
+
+"fm.wfm" = sin(2*pi*k1*time+b/k0*sin(2*pi*k0*time))
+
