@@ -1,0 +1,15 @@
+' nyquist pulse
+
+clock = 1e8
+size = 1024
+
+k0 = 50e-8    ' data period
+k1 = 512e-8   ' peak location
+a = 0.5      ' excess bandwidth factor 0 to 0.5
+
+"t" = (time - k1) / k0
+"nyquist.wfm" = 
+          cos(a * pi * "t") / (1 - (2 * a * "t") ^ 2) 
+           * sinc(pi * "t")
+
+delete("t")

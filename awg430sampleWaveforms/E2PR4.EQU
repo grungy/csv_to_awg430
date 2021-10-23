@@ -1,0 +1,18 @@
+' E2PR4 Pulse
+
+spcell = 10             'Samples/Cell
+cperiod = 10e-8         'Cell Period [sec]
+ncells = 20             'Number of Cells
+clock = spcell/cperiod  'Samples/Cell / Cell Period [Hz]
+size = spcell*ncells    'Samples/Cell * Number of Cells
+
+k0=ncells*pi            'Number of Cells * PI
+k1=0.5
+a=pi*3/32
+
+"E2PR4.WFM"=a*(sinc(k0*(scale-k1)) +
+             3*sinc(k0*(scale-k1)+pi) +
+             3*sinc(k0*(scale-k1)+2*pi) +
+               sinc(k0*(scale-k1)+3*pi ))
+
+
