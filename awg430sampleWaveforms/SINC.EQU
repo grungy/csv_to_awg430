@@ -1,9 +1,0 @@
-' sinc pulse
-
-size = 2048
-clock = 1e8
-
-k0 = 50e5     ' sine frequency
-k1 = 1024e-8  ' peak location
-
-"sinc.wfm" = sinc(2 * pi * k0 * (time - k1))
