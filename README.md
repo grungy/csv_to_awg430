@@ -1,4 +1,4 @@
-# Rigol to AWG430
+# CSV to AWG430
 
 ## Supported Manufacturers:
 1. Rigol
