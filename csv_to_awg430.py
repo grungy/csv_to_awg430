@@ -20,6 +20,20 @@ def read_csv(fn):
         data = np.loadtxt(fn, skiprows=2, delimiter=',', usecols=0)
     return data, float(str_t_start), float(str_t_step)
 
+def read_lecroy_csv(fn):
+    with open(fn, 'r', encoding='ISO-8859-1') as f:
+        first_line = f.readline().strip().split(",")
+        assert( first_line == "LECROYHDO6104A-MOÅ,50511,Waveform".split(",")), repr(first_line)
+        _, num_segments, _, sz_segment = f.readline().strip().split(",")
+        _ = f.readline()
+        ix_segment, time_trig, time_since_segment = f.readline().strip().split(",")
+        tmp_locals = locals()
+        dct_meta = dict(filter(lambda elem: elem[0] not in ["fn", "f", "first_line", "_"], tmp_locals.items()))
+        data = np.loadtxt(fn, skiprows=5, delimiter=',', encoding='ISO-8859-1')
+        t_step = data[0, 0] - data[1, 0]
+        t_start = data[0, 0]
+    return data[:, 1], t_start, t_step
+
 def read_wfm(target):
     """return sample data from target WFM file"""
     
@@ -54,6 +68,13 @@ def rigol_to_awg430(fn_in, fn_out):
     data_out['vals'] = data
     write_wfm(data_out, fn_out, clock=1./t_step)
     return data_out, t_start, t_step
+
+def lecroy_to_awg430(fn_in, fn_out):
+    data, t_start, t_step = read_lecroy_csv(fn_in)
+    data_out = np.zeros(len(data), dtype=tek_dtype)
+    data_out['vals'] = data
+    write_wfm(data_out, fn_out, clock=1./t_step)
+    return data_out, t_start, t_step
         
 def decode_header(header_bytes):
     """returns a dict of wfm metadata"""
@@ -66,19 +87,36 @@ if __name__ == "__main__":
     parser.add_argument('--plot', '-p',
     action='store_true',
     help='Plot the data read from the csv after writing the wfm file.' )
-    parser.add_argument('--output', '-o', help='Output filename to use.')   
+    parser.add_argument('--output', '-o', help='Output filename to use.')
+    parser.add_argument('manufacturer', help='Manufacturer of the Oscilloscope.')   
 
     args = parser.parse_args()
 
     if(args.output):
-        data, t_start, t_step = rigol_to_awg430(args.filename, args.output+".wfm")
+        if args.manufacturer.lower() == "rigol":
+            data, t_start, t_step = rigol_to_awg430(args.filename, args.output+".wfm")
+        if args.manufacturer.lower() == "lecroy":
+            data, t_start, t_step = lecroy_to_awg430(args.filename, args.output+".wfm")
+        else:
+            print("Unknown Manufacturer")
     else:
         basename = os.path.basename(args.filename).split(".")[0]
-        data, t_start, t_step = rigol_to_awg430(args.filename, basename+".wfm")
+
+        if args.manufacturer.lower() == "rigol":
+            data, t_start, t_step = rigol_to_awg430(args.filename, basename+".wfm")
+        if args.manufacturer.lower() == "lecroy":
+            data, t_start, t_step = lecroy_to_awg430(args.filename, basename+".wfm")
+        else:
+            print("Unknown Manufacturer")
+    
+
 
     if(args.plot):
         print("Start, {} Step: {}".format(t_start, t_step))
         print("Data Shape: {}".format(data.shape))
 
-        plt.plot(data['vals'])
+        plt.plot(np.arange(t_start, t_start + t_step*len(data['vals']), t_step), data['vals'])
+        plt.xlabel("Time (s)")
+        plt.ylabel("Amplitude (V)")
+        plt.title(basename)
         plt.show()
