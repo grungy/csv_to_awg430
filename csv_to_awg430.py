@@ -34,6 +34,15 @@ def read_lecroy_csv(fn):
         t_start = data[0, 0]
     return data[:, 1], t_start, t_step
 
+def read_rohde_csv(fn):
+    with open(fn, 'r', encoding='ISO-8859-1') as f:
+        data = np.loadtxt(fn, skiprows=1, delimiter=',', encoding='ISO-8859-1')
+        t_step = np.average(np.diff(data[:, 0]))
+        if(t_step < 0):
+            t_step = t_step * -1
+        t_start = data[0, 0]
+    return data[:, 1], t_start, t_step
+
 def read_wfm(target):
     """return sample data from target WFM file"""
     
@@ -75,6 +84,13 @@ def lecroy_to_awg430(fn_in, fn_out):
     data_out['vals'] = data
     write_wfm(data_out, fn_out, clock=1./t_step)
     return data_out, t_start, t_step
+
+def rohde_to_awg430(fn_in, fn_out):
+    data, t_start, t_step = read_rohde_csv(fn_in)
+    data_out = np.zeros(len(data), dtype=tek_dtype)
+    data_out['vals'] = data
+    write_wfm(data_out, fn_out, clock=1./t_step)
+    return data_out, t_start, t_step
         
 def decode_header(header_bytes):
     """returns a dict of wfm metadata"""
@@ -97,6 +113,8 @@ if __name__ == "__main__":
             data, t_start, t_step = rigol_to_awg430(args.filename, args.output+".wfm")
         if args.manufacturer.lower() == "lecroy":
             data, t_start, t_step = lecroy_to_awg430(args.filename, args.output+".wfm")
+        if args.manufacturer.lower() == "rohde":
+            data, t_start, t_step = lecroy_to_awg430(args.filename, args.output+".wfm")
         else:
             print("Unknown Manufacturer")
     else:
@@ -106,6 +124,8 @@ if __name__ == "__main__":
             data, t_start, t_step = rigol_to_awg430(args.filename, basename+".wfm")
         if args.manufacturer.lower() == "lecroy":
             data, t_start, t_step = lecroy_to_awg430(args.filename, basename+".wfm")
+        if args.manufacturer.lower() == "rohde":
+            data, t_start, t_step = rohde_to_awg430(args.filename, basename+".wfm")
         else:
             print("Unknown Manufacturer")
     
