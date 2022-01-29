@@ -30,7 +30,7 @@ def read_lecroy_csv(fn):
         tmp_locals = locals()
         dct_meta = dict(filter(lambda elem: elem[0] not in ["fn", "f", "first_line", "_"], tmp_locals.items()))
         data = np.loadtxt(fn, skiprows=5, delimiter=',', encoding='ISO-8859-1')
-        t_step = data[0, 0] - data[1, 0]
+        t_step = np.average(np.diff(data[:, 0]))
         t_start = data[0, 0]
     return data[:, 1], t_start, t_step
 
