@@ -1,8 +1,9 @@
 # CSV to AWG430
 
 ## Supported Manufacturers:
-1. Rigol
-2. Lecroy
+1. rigol
+2. lecroy
+3. rohde
 
 ## Specify an input file:
 `python csv_to_awg430.py [filename] [manufacturer]`
