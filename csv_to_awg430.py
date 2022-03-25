@@ -4,10 +4,12 @@ import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 import argparse
+import pandas as pd
 sns.set_theme()
 
 str_header = b"MAGIC 1000\r\n#"
 tek_dtype = np.dtype([('vals', 'f4'), ('marker', 'u1')])
+lecroy_hdr = "LECROYHDO6104A-MO\xc5,50511,Waveform".split(",")
 
 class WfmReadError(Exception):
     """error for unexpected things"""
@@ -18,26 +20,33 @@ def read_csv(fn):
         first_line = f.readline().strip().split(",")
         assert( first_line == "CH1,Start,Increment,".split(",")), repr(first_line)
         unit, str_t_start, str_t_step = f.readline().split(",")
-        data = np.loadtxt(fn, skiprows=2, delimiter=',', usecols=0)
+        # data = np.loadtxt(fn, skiprows=2, delimiter=',', usecols=0)
+        data_pd = pd.read_csv(fn, skiprows=2, delimiter=',', usecols=0)
+        data = data_pd.to_numpy()
     return data, float(str_t_start), float(str_t_step)
 
 def read_lecroy_csv(fn):
     with open(fn, 'r', encoding='ISO-8859-1') as f:
         first_line = f.readline().strip().split(",")
-        assert( first_line == "LECROYHDO6104A-MOÅ,50511,Waveform".split(",")), repr(first_line)
+        print(repr(lecroy_hdr))
+        assert( first_line == lecroy_hdr), repr(first_line)
         _, num_segments, _, sz_segment = f.readline().strip().split(",")
         _ = f.readline()
         ix_segment, time_trig, time_since_segment = f.readline().strip().split(",")
         tmp_locals = locals()
         dct_meta = dict(filter(lambda elem: elem[0] not in ["fn", "f", "first_line", "_"], tmp_locals.items()))
-        data = np.loadtxt(fn, skiprows=5, delimiter=',', encoding='ISO-8859-1')
+        # data = np.loadtxt(fn, skiprows=5, delimiter=',', encoding='ISO-8859-1')
+        data_pd = pd.read_csv(fn, skiprows=5, delimiter=',', encoding='ISO-8859-1')
+        data = data_pd.to_numpy()
         t_step = np.average(np.diff(data[:, 0]))
         t_start = data[0, 0]
     return data[:, 1], t_start, t_step
 
 def read_rohde_csv(fn):
     with open(fn, 'r', encoding='ISO-8859-1') as f:
-        data = np.loadtxt(fn, skiprows=1, delimiter=',', encoding='ISO-8859-1')
+        # data = np.loadtxt(fn, skiprows=1, delimiter=',', encoding='ISO-8859-1')
+        data_pd = pd.read_csv(fn, skiprows=1, delimiter=',', encoding='ISO-8859-1')
+        data = data_pd.to_numpy()
         t_step = np.average(np.diff(data[:, 0]))
         if(t_step < 0):
             t_step = t_step * -1
@@ -112,9 +121,9 @@ if __name__ == "__main__":
     if(args.output):
         if args.manufacturer.lower() == "rigol":
             data, t_start, t_step = rigol_to_awg430(args.filename, args.output+".wfm")
-        if args.manufacturer.lower() == "lecroy":
+        elif args.manufacturer.lower() == "lecroy":
             data, t_start, t_step = lecroy_to_awg430(args.filename, args.output+".wfm")
-        if args.manufacturer.lower() == "rohde":
+        elif args.manufacturer.lower() == "rohde":
             data, t_start, t_step = lecroy_to_awg430(args.filename, args.output+".wfm")
         else:
             print("Unknown Manufacturer")
@@ -123,9 +132,9 @@ if __name__ == "__main__":
 
         if args.manufacturer.lower() == "rigol":
             data, t_start, t_step = rigol_to_awg430(args.filename, basename+".wfm")
-        if args.manufacturer.lower() == "lecroy":
+        elif args.manufacturer.lower() == "lecroy":
             data, t_start, t_step = lecroy_to_awg430(args.filename, basename+".wfm")
-        if args.manufacturer.lower() == "rohde":
+        elif args.manufacturer.lower() == "rohde":
             data, t_start, t_step = rohde_to_awg430(args.filename, basename+".wfm")
         else:
             print("Unknown Manufacturer")
