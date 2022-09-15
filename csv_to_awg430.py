@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import argparse
 import pandas as pd
+from scipy.interpolate import interp1d
 sns.set_theme()
 
 str_header = b"MAGIC 1000\r\n#"
@@ -81,22 +82,29 @@ def write_wfm(data, fn_out, clock=None):
     
     return
 
-def rigol_to_awg430(fn_in, fn_out):
+def rigol_to_awg430(fn_in, fn_out, new_sample_rate=False):
     data, t_start, t_step = read_csv(fn_in)
+    if new_sample_rate:
+        t_new, data = downsample_data(t_start, t_step, data, new_sample_rate)
     data_out = np.zeros(len(data), dtype=tek_dtype)
     data_out['vals'] = data
     write_wfm(data_out, fn_out, clock=1./t_step)
     return data_out, t_start, t_step
 
-def lecroy_to_awg430(fn_in, fn_out):
+def lecroy_to_awg430(fn_in, fn_out, new_sample_rate=False):
     data, t_start, t_step = read_lecroy_csv(fn_in)
+    if new_sample_rate:
+        t_new, data = downsample_data(t_start, t_step, data, new_sample_rate)
     data_out = np.zeros(len(data), dtype=tek_dtype)
     data_out['vals'] = data
     write_wfm(data_out, fn_out, clock=1./t_step)
     return data_out, t_start, t_step
 
-def rohde_to_awg430(fn_in, fn_out):
+def rohde_to_awg430(fn_in, fn_out, new_sample_rate=False):
     data, t_start, t_step = read_rohde_csv(fn_in)
+    if new_sample_rate:
+        print( new_sample_rate)
+        t_new, data = downsample_data(t_start, t_step, data, new_sample_rate)
     data_out = np.zeros(len(data), dtype=tek_dtype)
     data_out['vals'] = data
     write_wfm(data_out, fn_out, clock=1./t_step)
@@ -107,45 +115,54 @@ def decode_header(header_bytes):
     str_header = "MAGIC 1000\r\n#"
     return str_header
 
+def downsample_data(t_start, t_step, X, new_sample_rate):
+    # desired sample rate / input sample rate * number of points in input signal
+    dt = 1 / new_sample_rate
+    T = np.arange(t_start, t_step * X.size + t_start, t_step)
+    F = interp1d(T, X, fill_value='extrapolate')
+    Tnew = np.arange(T.min(), T.max(), dt)
+    Xnew = F(Tnew)
+    return Tnew, Xnew
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Convert Rigol Oscilloscope trace file to AWG430 waveform file.')
     parser.add_argument('filename', help='Input CSV file to be read.')
     parser.add_argument('--plot', '-p',
     action='store_true',
     help='Plot the data read from the csv after writing the wfm file.' )
+    parser.add_argument('--down_sample', '-d', help='Down sample the input data with the given sampling rate.')
     parser.add_argument('--output', '-o', help='Output filename to use.')
     parser.add_argument('manufacturer', help='Manufacturer of the Oscilloscope.')   
 
     args = parser.parse_args()
 
-    if(args.output):
-        if args.manufacturer.lower() == "rigol":
-            data, t_start, t_step = rigol_to_awg430(args.filename, args.output+".wfm")
-        elif args.manufacturer.lower() == "lecroy":
-            data, t_start, t_step = lecroy_to_awg430(args.filename, args.output+".wfm")
-        elif args.manufacturer.lower() == "rohde":
-            data, t_start, t_step = lecroy_to_awg430(args.filename, args.output+".wfm")
-        else:
-            print("Unknown Manufacturer")
+    if args.down_sample:
+        down_sample = float(args.down_sample)
     else:
-        basename = os.path.basename(args.filename).split(".")[0]
+        down_sample = False
 
-        if args.manufacturer.lower() == "rigol":
-            data, t_start, t_step = rigol_to_awg430(args.filename, basename+".wfm")
-        elif args.manufacturer.lower() == "lecroy":
-            data, t_start, t_step = lecroy_to_awg430(args.filename, basename+".wfm")
-        elif args.manufacturer.lower() == "rohde":
-            data, t_start, t_step = rohde_to_awg430(args.filename, basename+".wfm")
-        else:
-            print("Unknown Manufacturer")
+
+    basename = os.path.basename(args.filename).split(".")[0]
+    output_fn = args.output+".wfm" if args.output else basename+".wfm"
+
+    if args.manufacturer.lower() == "rigol":
+        data, t_start, t_step = rigol_to_awg430(args.filename, output_fn, down_sample)
+    elif args.manufacturer.lower() == "lecroy":
+        data, t_start, t_step = lecroy_to_awg430(args.filename, output_fn, down_sample)
+    elif args.manufacturer.lower() == "rohde":
+        data, t_start, t_step = rohde_to_awg430(args.filename, output_fn, down_sample)
+    else:
+        print("Unknown Manufacturer", args.manufacturer)
+        exit()
     
 
 
-    if(args.plot):
+    if args.plot:
         print("Start, {} Step: {}".format(t_start, t_step))
-        print("Data Shape: {}".format(data.shape))
-
-        plt.plot(np.arange(t_start, t_start + t_step*len(data['vals']), t_step), data['vals'])
+        print("Data Shape: {}".format(data['vals'].shape))
+        t = np.arange(t_start, t_start + t_step*data['vals'].shape[0], t_step)
+        print(t.shape)
+        plt.plot( t, data['vals'])
         plt.xlabel("Time (s)")
         plt.ylabel("Amplitude (V)")
         plt.title(basename)
